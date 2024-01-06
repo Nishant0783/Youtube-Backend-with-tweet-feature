@@ -1,0 +1,4 @@
+# I have made a temp folder which will be ignoreed by git so to add to folder to my repository I have made a empty file .gitkeep inside temp folder which forces git to keep track of temp folder also.
+
+# I have installed nodemon here but as dev dependency. So dev dependency means that the package is only used through thr development process, we do not take it to production.
+If we use command 'npm install --save-dev nodemon' or 'npm install -D nodemon' it will installed as dev dependency otherwise using normal command it will installed as main dependency.
