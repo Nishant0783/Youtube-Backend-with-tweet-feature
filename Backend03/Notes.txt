@@ -2,3 +2,23 @@
 
 # I have installed nodemon here but as dev dependency. So dev dependency means that the package is only used through thr development process, we do not take it to production.
 If we use command 'npm install --save-dev nodemon' or 'npm install -D nodemon' it will installed as dev dependency otherwise using normal command it will installed as main dependency.
+
+# I have also installed prettier package which is used to maintain the standard followed by organization to reduce conflicting code.
+To make this package work we make a file '.prettierrc' where we store our standards. 
+Reload the project after making this file.
+I have also made a file '.prettierignore' in which i have defined the files which i don't want it to alter. They should be as they are written.
+
+
+/******DATABASE*****/
+1) Connecting to database can generate error sometime. So, best approach is to wrap connection in "try-catch" or "use promises".
+2) "Database is kept in another continent". So connecting to it is a time consuming process so it is always advised to use "async-await".
+
+/*****DOT ENV*****/
+The problem with dotenv file is just it's importing style. It uses that 'require' syntax which alters code consistency. Now to use it with 'import' statement we have to do some setting.
+1) Since environment variables should be loaded as early as possible so at top of index.js we will import dotenv.
+      -->  "import dotenv from 'dotenv'";
+2) Now next thing to do is to configure it.
+      -->  dotenv.config({path: './env'}); 
+3) Since, currently this feature is experimental so we have to tell our application about it.
+We can do this by going to package.json and altering script:
+      --> "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js"
