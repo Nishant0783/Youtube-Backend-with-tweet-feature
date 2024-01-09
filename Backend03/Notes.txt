@@ -13,12 +13,34 @@ I have also made a file '.prettierignore' in which i have defined the files whic
 1) Connecting to database can generate error sometime. So, best approach is to wrap connection in "try-catch" or "use promises".
 2) "Database is kept in another continent". So connecting to it is a time consuming process so it is always advised to use "async-await".
 
+
 /*****DOT ENV*****/
 The problem with dotenv file is just it's importing style. It uses that 'require' syntax which alters code consistency. Now to use it with 'import' statement we have to do some setting.
 1) Since environment variables should be loaded as early as possible so at top of index.js we will import dotenv.
       -->  "import dotenv from 'dotenv'";
 2) Now next thing to do is to configure it.
       -->  dotenv.config({path: './env'}); 
+      In path property we give the path to the .env file. It is not neccessary to give path. We can directly use "dotenv.config()".
 3) Since, currently this feature is experimental so we have to tell our application about it.
 We can do this by going to package.json and altering script:
       --> "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js"
+
+/******MIDDLEWARE*****/
+1) As the name suggests, middlewares are some kind of functionality which is performed on data while going from frontend to backend.
+
+2) There can more than one middlewares in an app and the sequence in which they are implemented in app, they work in same sequence.
+
+3) In express we have two parameters in each routing methods which are (req, res). For eg: In app.get('/route', (req, res)=> {});
+So, till now we have seen only two paramters but there are four parameter (err, req, res, next).
+We know first three (err, req, res). Let's see about (next).
+(next): It is a flag which is just used to call next middleware. When 1st middleware has done it's working then we can use next flag to pass the data to next middleware similarly it can use it to pass to next middleware.
+
+/*****UTILS FOLDER*****/
+1) What is utility? Utility is something which is required again and again. 
+2) In Utils we store all the files or methods which are required again and again in different files.
+For eg: We have differnet models and each model need to talk to database and while talking to database we have to follow two things: 1st) Use promises or try-catch to handle errors.  2nd) Use async-await because databases take some time get the responses. So, we can see here we have to do same task for every model to make it talk to database just database name and other minor things are changing. So we can create a file in utiltiy folder that can be used anywhere.
+
+
+/*******HIGHER ORDER FUNCTIONS*******/
+The functions which can accepts one or more functions as a paramater and returns them are called higher order functions.
+Freecodecamp has good documentation about it: https://www.freecodecamp.org/news/higher-order-functions-in-javascript-explained/
