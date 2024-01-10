@@ -44,3 +44,9 @@ For eg: We have differnet models and each model need to talk to database and whi
 /*******HIGHER ORDER FUNCTIONS*******/
 The functions which can accepts one or more functions as a paramater and returns them are called higher order functions.
 Freecodecamp has good documentation about it: https://www.freecodecamp.org/news/higher-order-functions-in-javascript-explained/
+
+
+/*******JWT********/
+JSON web token is a bearers token means whosoever sends this token the data is then sent to them. It's like a key to lock.
+1) To use jwt we need to install jwt package and import it.
+2) We need to have same variables with some secret value which we keep in environment variables(.env).
