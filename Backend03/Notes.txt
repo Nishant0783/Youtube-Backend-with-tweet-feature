@@ -50,3 +50,20 @@ Freecodecamp has good documentation about it: https://www.freecodecamp.org/news/
 JSON web token is a bearers token means whosoever sends this token the data is then sent to them. It's like a key to lock.
 1) To use jwt we need to install jwt package and import it.
 2) We need to have same variables with some secret value which we keep in environment variables(.env).
+
+
+/*****FILE UPLOADING****/
+1) To store files we will use "cloudinary" free version.
+2) To upload files we will use "multer".
+3) The procedure we will follow to upload files is:- 
+      ---> Using multer first we will save file to local storage for temporary usage.
+      ---> Then we will uplaod the file to cloudinary and generate a public URL which we will save to database.
+      /** This is a 2-step process and is followed in industry because if due to any reason if file upload fails then we have file in our local storage and we can re-attmept to uppload it. We don't have to ask user to again upload it. **/
+       
+      There is a another method in which we can use multer to directly upload file to cloudinary without storing it to local storage.
+
+
+/****REMOVE FILE USING fs****/
+1) In any of the file system they use a common term which is "link". It is a term used in Operating system which means relating one thing to other. If we talk particulary, then linking means creating a relation between file and OS.
+2) Now to remove a file they use term "unlink" it means to delete the link between the file and OS.
+3) To delete a file the method generally used is "unlink()" but this method is asynchronous. In our use case we need to remove file before proceeding to next operation. So, we will use "unlinkSync()" method.
