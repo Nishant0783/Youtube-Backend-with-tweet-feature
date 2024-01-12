@@ -30,4 +30,21 @@ app.use(express.static('public'));
 // cookie-parser allow us to safely add, access and remove cookies from user's browser from server.
 app.use(cookieParser());
 
-export { app }
+
+
+// routes import
+import userRouter from './routes/user.routes.js';
+
+// routes declaration
+
+// app.use("/users", userRouter); // Here when user will go to "/users" routes then the control of program will jump to "userRouter" file.
+
+// This is a good practice but not followed in industry.
+// Since this is an API as we are talking to another route and we need to send and recieve data. To understand this line understand "userRoute" file thoroughly.
+// Since it is an API so industry grade practice is to display the "api" word and it's version in url.
+// So, the route becomes:
+
+app.use("/api/v1/users", userRouter);
+
+// The final url will become "http://localhost3000:/api/v1/users/{routes define in userRouter file such as /register or /login}"
+export { app } 
