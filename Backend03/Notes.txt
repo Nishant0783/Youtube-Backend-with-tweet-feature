@@ -67,3 +67,15 @@ JSON web token is a bearers token means whosoever sends this token the data is t
 1) In any of the file system they use a common term which is "link". It is a term used in Operating system which means relating one thing to other. If we talk particulary, then linking means creating a relation between file and OS.
 2) Now to remove a file they use term "unlink" it means to delete the link between the file and OS.
 3) To delete a file the method generally used is "unlink()" but this method is asynchronous. In our use case we need to remove file before proceeding to next operation. So, we will use "unlinkSync()" method.
+
+
+/****ARRAY.SOME() METHOD IN JS***/
+1) array.some() method iterates over the array and check for atleast one element in array to satisfy given condition. If any of the element satisfied the condition it returns "true" otherwise "false".
+2) It accepts a callback which inside which the condition is written.
+3) Inside in our code we have some method in this snippet: 
+if(
+        [fullName, email, username, password].some((field) => (
+            field.trim() === ""
+        ))
+) { throw new ApiError(400, "All fields are required"); }
+Here, inside "if" we are iterating on each element of the given array and checking that after removing all the white spaces(using trim() method) from the value of each element in array,if any element is empty then .some() will return "true" otherwise "false". If "true" is returned then controll wil jump to if block and throw an error.

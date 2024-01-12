@@ -1,8 +1,8 @@
 import mongoose, { Schema } from 'mongoose';
-import { jwt } from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 
 // We are using bcrypt package to encrypt our passwords.
-import bcrypt from 'bcyrpt';
+import bcrypt from 'bcrypt';
 
 const userSchema = new Schema(
     {
@@ -43,7 +43,7 @@ const userSchema = new Schema(
         ],
         password: {
             type: String,
-            required: [truw, "Password is required"]
+            required: [true, "Password is required"]
         },
         refreshToken: {
             type: String

@@ -1,11 +1,12 @@
 import {Router} from 'express';
 import { registerUser } from '../controllers/user.controller.js';
+import { upload } from './../middlewares/multer.middleware.js';
 
 const router = Router();
 
 // When user will go to "/users" route then controll of program will come here and here we will define the functionality.
 
-router.route("/register").post(registerUser);
+// router.route("/register").post(registerUser);
 
 // Now the confusion is, in app.js we have defined when user go to "/users" then the flow of program will jump to "userRouter" file and here we have defined a new route which is "/register" and when user go to this route then POST method is activated and flow jumps to "registerUser()" method. So, the confusion is where we will finally land and what will be the url of the webpage.
 // The answer is the route we have defined in app.js acts as a prefix to the routes we are defining here.
@@ -16,6 +17,23 @@ router.route("/register").post(registerUser);
 // "http://localhost3000/ap/v1/users/register" or "http://localhost3000/ap/v1/users/login"
 
 
+// Code to apply multer so that "registerUser" can work with files.
+router.route("/register").post(
+    // "upload" is the multer middleware which we have configured in middlewares folder.
+    // ".fields()" is one of the method which we will use to upload the files.
+    // ".fields()" accept an array as parameter. We will give array of objects. I have two objects because we are expecting two images one for "avatar" and other for "coverImage".
+    upload.fields([
+        {
+            name: "avatar", // Value of name field should be in consistency with the frontend means the name we have to given to input box for taking image we have to give same name here also.
+            maxCount: 1 // This is the number of files we are expecting. So for "avatar" we are expecting 1 image.
+        },
+        {
+            name: "coverImage",
+            maxCount: 1
+        }
+    ]),
+    registerUser
+)
 
 
 
