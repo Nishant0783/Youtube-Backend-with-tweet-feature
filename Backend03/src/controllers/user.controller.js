@@ -1,8 +1,8 @@
 import { ApiError } from '../utils/ApiError.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
-import {asyncHandler} from '../utils/asyncHandler.js';
-import {User} from '../models/user.model.js';
-import {uploadOnCloudinary} from '../utils/cloudinary.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
+import { User } from '../models/user.model.js';
+import { uploadOnCloudinary } from '../utils/cloudinary.js';
 
 
 // const registerUser = asyncHandler( async (req, res) => {
@@ -24,10 +24,11 @@ import {uploadOnCloudinary} from '../utils/cloudinary.js';
 // 8) Check for user creation.
 // 9) Return response. 
 
-const registerUser = asyncHandler( async (req, res) => {
+const registerUser = asyncHandler(async (req, res) => {
 
     // Step1) All the details we get from req.body
     const { fullName, email, username, password } = req.body;
+    console.log(res.body);
 
     // Now here, we are expecting some images but we have not configured anything to accept files except a "multer middleware" which is only neccessary. Till now we are only dealing with data.
     // Since, multer is configured as middleware and middleware works just after the routes and before final functionality. So, we can't use apply multer here because this is just a method.
@@ -50,11 +51,11 @@ const registerUser = asyncHandler( async (req, res) => {
     // In another approach we will use array of all the fields we want to validate for and use ".some()" method to check for empty fields. 
     /*** NOTE: To know about ".some()" method refer to "Notes.txt" ***/
 
-    if(
+    if (
         [fullName, email, username, password].some((field) => (
             field.trim() === ""
         ))
-    ){
+    ) {
         throw new ApiError(400, "All fields are required.")
     }
 
@@ -63,10 +64,10 @@ const registerUser = asyncHandler( async (req, res) => {
     // Since we need to check for "username" or "email" (because none of them should be already used) we will use operators provided by mongoose which returns boolean value.
     // We will use "or" operator.
     // We can use operator by using "$ + operator_name" as an array of object. Since we have to check for two values therefore there will be 2 objects in array of objects.
-    const existedUser = User.findOne({
-        $or: [ { username }, { email }]
+    const existedUser = await User.findOne({
+        $or: [{ username }, { email }]
     });
-    if(existedUser){
+    if (existedUser) {
         throw new ApiError(409, "User with email or username already exists.")
     }
 
@@ -80,10 +81,18 @@ const registerUser = asyncHandler( async (req, res) => {
     // This is good, but one corner case is missing which is suppose if we don't have ".avatar" option, it can happen because ".avatar" is the name which we have configured in other file which is in routes file and here we can have a typo in writing name, or suppose if we don't have ".path" property on our ".avatar".
     // So, to handle this corner case we will use "conditional chaining(?.)" means before chaining we will check if that property exists or not.
     const avatarLocalPath = req.files?.avatar[0]?.path;
-    const coverImageLocalPath = req.files?.coverImage[0]?.path;
+    // const coverImageLocalPath = req.files?.coverImage[0]?.path; // Here is a little bug, let's understand this: First we are checking do we have "req.files" then we are checking do we have "coverImage" array or not then we are checking for "path". And, later on in code where we are creating entry of data in database checking that if we have "coverImage.url" then save it or if we don't have url then leave it empty. But the point to think here is that: SINCE COVERIMAGE IS NOT AN MANDATORY FIELD, SO WE CAN LEAVE IT EMPTY AND EMPTY MEANS "UNDEFINED" AND THE DATABASE WILL THROW AN ERROR "Cannot read properties of undefined" because in we are checking for "coverImage.url" and the vlaue of "coverImage" is "undefined" so database will go for checking the "url" value for an undefined which will make database to throw error. To solve this error we can use classical "if" statement  or there is an addvanced JS solution using "conditional chaining".
+    // In "if" statement we will check for each condition. 1) check for do we have "req.files"  2) check for "coverImage" is an array by using "isArray() method which accepts name of array return boolean value. True if passed argument is array and flase if not".  3) check for length of "coverImage" array because it can happen that we might not have any element inside array.
+    let coverImageLocalPath;
+    if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
+        coverImageLocalPath = req.files.coverImage[0].path;
+    }
+    // Adavnced "conditional chaining" method:
+    // const coverImageLocalPath = req.files?.coverImage?.[0].path; // Here we are checking that do we have "coverImage" array or not by placing "?" just after "coverImage".
+
 
     // Now for us, avatar is mandatory so we will check if we got path of avatar or not.
-    if(!avatarLocalPath) {
+    if (!avatarLocalPath) {
         throw new ApiError(400, "Avatar file is required.")
     }
 
@@ -94,7 +103,7 @@ const registerUser = asyncHandler( async (req, res) => {
 
     // Since avatar is required field so we will again check that avatar is uploaded or not.
 
-    if(!avatar) {
+    if (!avatar) {
         throw new ApiError(400, "Avatar file is required")
     }
 
@@ -121,7 +130,7 @@ const registerUser = asyncHandler( async (req, res) => {
     // Step8 and 9) Checking user creation by analysing "createdUser".
     // If user is not created we will throw an error.
     // Sending response is a task of responsibility. So we will send response in particular format hence we will use "ApiResponse.js" utility.
-    if(!createdUser) {
+    if (!createdUser) {
         throw new ApiError(500, "Something went wrong while registering the user.")
     }
 
@@ -129,7 +138,7 @@ const registerUser = asyncHandler( async (req, res) => {
         new ApiResponse(200, createdUser, "User registered successfully")
     );
 
-} );
+});
 
 
-export {registerUser};
+export { registerUser };
