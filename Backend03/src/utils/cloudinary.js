@@ -26,8 +26,13 @@ const uploadOnCloudinary = async (localFilePath) => {
             resource_type: "auto",  // Using this option we can give the type of resource we are uploding like image, raw. Using "auto" it will automatically detect.
         });
         // file has been uploaded successfully
-        console.log(`file uploaded on Cloudinary successfully: ${response.url}`);
+        // console.log(`file uploaded on Cloudinary successfully: ${response.url}`);
         // response.url will give the public url of the uploaded file.
+
+        // Now, since the file has been uploaded to cloudinary, so we can safely unlink the file from our local storage.
+        fs.unlinkSync(localFilePath);
+
+        // console.log(response);
         return response;
         
     } catch (error) {

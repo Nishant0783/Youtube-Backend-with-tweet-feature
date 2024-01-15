@@ -78,11 +78,16 @@ const userSchema = new Schema(
 // To implement the solution we will use "isModified("field to check in string")" method of mongoose that takes field which we want to check that is modified or not, as parameter and returns a boolean value. So we will make a check if "isModified()" returns false we will pass the functionality to next middleware otherwise do the encryption and pass teh functionality to next middleware.
 
 userSchema.pre("save", async function (next) {
-    if (this.isModified("password")) return next();
+    if (!this.isModified("password")) {
+        return next()   
+    }
 
     this.password = await bcrypt.hash(this.password, 10);
     next();
 });
+
+
+
 
 // Now before creating a model we need to validate that the password entered by user matches with the one saved in database or not.
 // This might be little confusing that why are we validating passwords here before creating model. We can do this thing in the place where we will take input from user.
@@ -122,7 +127,7 @@ userSchema.methods.generateAccessToken = function () {
 
 // 2) generateRefreshToken: This token is also generated in same way.
 
-userSchema.methods.generateRefreshToken = function(){
+userSchema.methods.generateRefreshToken = function () {
     return jwt.sign(
         {
             _id: this._id,

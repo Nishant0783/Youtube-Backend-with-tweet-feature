@@ -13,7 +13,7 @@ const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         // In this cb we are passing 1st argument as null because we are not dealing with errors initially.
         // When we will need we will modify it.
-        cb(null, './publicc/temp')
+        cb(null, './public/temp')
     },
     filename: function (req, file, cb) {
     /* Code given by multer.
