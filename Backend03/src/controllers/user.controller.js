@@ -3,7 +3,33 @@ import { ApiResponse } from '../utils/ApiResponse.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { User } from '../models/user.model.js';
 import { uploadOnCloudinary } from '../utils/cloudinary.js';
+import { isPasswordCorrect, generateAccessToken, generateRefreshToken } from '../models/user.model.js';
 
+/***NOTE: Come to this part in while making "loginUser" method ***/
+// This is a utility method we have made to generate access and refresh token. We will use this method in Step4) of login user.
+// Now, let's understand this method:-
+// 1) This method accept a paramter which is "userId". Now question is how do we know we have id or not? 
+// ---> The answer is since this method is used in Step4) and in earlier steps we have validated that we will have a user, thats why we are using userId.
+// 2) First we have to find the user based on "id".
+// 3) Then we will generate an access token and refresh token by using methods that we created in user.model.js file.
+// 4) We know that once refresh token is generared  we need to save it in database. So first we create a field in database in user model using "user.refreshToken" and assign "refreshToken" to it.
+// 5) To save we will use ".save()" method of mongoose and since it can be time consuming process so using "await". Now, what is "{ validateBeforeSave: false }"? Since , the ".save()" method re-validate the whole model before saving it to database. Re-validation means it will check all the required fields are given or not, but here we are only adding a new field which is "refreshToken" so saving will give error. Hence { validateBeforeSave: false } is used to save without any revalidation.
+// 6) Then at last, we need to send the access and token with the cookies to user so we need to have them. Therefore, we will return them, from this method.
+const generateAccessAndRefreshTokens = async (userId) => {
+    try {
+        const user = await User.findById(userId);
+        const accessToken = user.generateAccessToken();
+        const refreshToken = user.generateRefreshToken();
+
+        user.refreshToken = refreshToken
+        await user.save({ validateBeforeSave: false })
+
+        return { accessToken, refreshToken };
+    } catch (error) {
+        throw new ApiError(500, "Something went wrong while generating refresh and access token");
+    }
+}
+/******/
 
 // const registerUser = asyncHandler( async (req, res) => {
 //     res.status(200).json({
@@ -141,4 +167,118 @@ const registerUser = asyncHandler(async (req, res) => {
 });
 
 
-export { registerUser };
+// Once the user is registered successfully, then have to make user logged in.
+// Again, for production grade backend we have to follow for some steps which are: 
+// 1) Get the login data from forntend. Login can be based on "username" or "email".
+// 2) Find the user in database.
+// 3) Check the password
+// 4) If the data is correct, then generate a access token and refresh token for user.
+// 5) Send the access and refresh tokens in the form of secure cookie to user.
+
+const loginUser = asyncHandler(async (req, res) => {
+
+    // Step1) 
+    const { username, email, password } = req.body;
+    // Here we need to make a check that user should have entered username or email
+    if (!(username || email)) {
+        throw new ApiError(400, "Username or Email is required");
+    }
+
+    // Step2) Now, since we accepting username or email from user so we have to find in database on the basis of username or email hence we will use mongodb operators(Here we will use "or" operator).
+
+    const user = await User.findOne({
+        $or: [{ username }, { email }]
+    });
+    // If user is not present
+    if (!user) {
+        throw new ApiError(404, "User does not exist.")
+    }
+
+    // Step3) To check password we have already made a method in user.model.js file which uses bcrypt and accepts the user entered password and returns a boolean value.
+
+    const isPasswordValid = await user.isPasswordCorrect(password);
+    if (!isPasswordValid) {
+        throw new ApiError(401, "Invalid user credentials")
+    };
+
+    // Step4) We will use above defined method to generate tokens and save refresh token to database.
+    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id)
+
+    console.log(user);
+
+    // Now, we have a "user"(which we have found on the basis of username or email above in the code) which has all the fields including some unwanted fileds such as "password" and "refreshToken" which we don't want to send to user.
+    // To remove these unwanted fields we will make a database call using ".select()" method which allows us to exclude the other non-required fields.
+    const loggedInUser = await User.findById(user._id).select("-password", "-refreshToken");
+
+    console.log("logged in user: ", loggedInUser);
+
+    // Step5) To send cookies using "cookie-parser package"  we need to design some options.
+    const options = {
+        // By default, we don't give options then in frontend anybody can modify the cookies but using these options we set that the cookies are modifiable only on server.
+        httpOnly: true,
+        secure: true
+    }
+    // Now we will send cookies as a respons using ".cookie()" method provided by "cookie-parser" which accepts three paramters 1) "Key: Name of the cookie"  2) "Value: Value of cookie"  3) "options".
+    // For each cookie we need to have a separate ".cookie()" method.
+
+    return res
+        .status(200)
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", refreshToken, options)
+        .json(
+            new ApiResponse(
+                200, // statusCode
+                // Below given whole object is "data". We can check the structure of "ApiResponse.js" file in utility folder to understand it.
+                {
+                    // The data we need to send is given by name "user" and the fields we need to send are "loggedInUser", "accessToke", "refreshToken".
+
+                    user: loggedInUser, accessToken, refreshToken
+                },
+                "User logged In Successfully" // message
+            )
+        )
+});
+
+// Now after logging in user successfully we have to logout the user.
+// To logout user we have to do two things only:
+// 1) Clear all the cookies.
+// 2) Clear refreshToken for it. Because when user will again login next time new tokens will be generated.
+
+// BIG PROBLEM: We know the strategy how to make a user logout. But to make a logout we need to have it's email or username or _id so we can query database and clear all the above mentioned things. But here, in "logoutUser()" method we don't have access to any of these. Earlier in above method we had a form where user submits details and on the basis of that detail we can find the user. But here we don't have the leverage. The problem is "HOW WE CAN GET THE ID OF USER TO BE LOGGED OUT?"
+// ANSWER: If we have something in "request" through which we can the currently logged in user details then we can do. Now by default express does not provide any thing to do this. We know that if express does not provide required things in "request or response object" then we can use a middleware to do so. Like we did earlier when we don't have access to "files" we used to "multer" which added a files field in "req and res", similarly for cookies we used "cokie-parser". So, inject something in "req and res object" we have to use a middleware. But there areno predefined middleware, So, we will design our own middleware by name "auth.middleware.js" in "middlewares" folder.
+const logoutUser = asyncHandler(async (req, res) => {
+    // Now we can make a database call to clear the refreshToken by using "_id" getting from "req.user".
+    await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set: {
+                refreshToken: undefined
+            }
+        },
+        {
+            new: True // Using this so that we get new updated value of user in response object.
+        }
+    )
+
+    // Now we have to clear cookies. To clear them we have "clearCookies()" method given by "cookie-parser".
+    const options = {
+        // By default, we don't give options then in frontend anybody can modify the cookies but using these options we set that the cookies are modifiable only on server.
+        httpOnly: true,
+        secure: true
+    }
+
+    return res
+    .status(200)
+    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken", options)
+    .json(
+        new ApiResponse(200, {}, "User logged out successfully")
+    )
+
+})
+
+
+
+
+
+export { registerUser, loginUser, logoutUser };

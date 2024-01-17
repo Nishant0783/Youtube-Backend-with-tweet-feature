@@ -50,7 +50,7 @@ Freecodecamp has good documentation about it: https://www.freecodecamp.org/news/
 JSON web token is a bearers token means whosoever sends this token the data is then sent to them. It's like a key to lock.
 1) To use jwt we need to install jwt package and import it.
 2) We need to have same variables with some secret value which we keep in environment variables(.env).
-
+3) The JWT tokens are in structure which is "Bearer <token>". "Bearer" is a prefix which every token will have.
 
 /*****FILE UPLOADING****/
 1) To store files we will use "cloudinary" free version.
@@ -79,3 +79,15 @@ if(
         ))
 ) { throw new ApiError(400, "All fields are required"); }
 Here, inside "if" we are iterating on each element of the given array and checking that after removing all the white spaces(using trim() method) from the value of each element in array,if any element is empty then .some() will return "true" otherwise "false". If "true" is returned then controll wil jump to if block and throw an error.
+
+
+/*** ACCESS TOKENS ***/
+1) An accesss token is a credential used by an applicationto access a protected resource on behalf of user.
+2) It represents the authorization granted to the application and specifies the premissions and scope of access.
+3) Access tokens are short-lived and typically hae an expiration time to enhance security.
+4) They are used to make API requests to access user data or preform actions on behalf of the user.
+
+/*** REFRESH TOKENS ***/
+1) A refresh token is credential used to obtain a new access token when the current one expires.
+2) Unlike access token, refresh tokens have a lobger lifespan and are used to obtain a new acces token without requiring the user to re-authenticate.
+3) It adds an additional layer of security since the user 's credentials are not invloved in every access token request.
