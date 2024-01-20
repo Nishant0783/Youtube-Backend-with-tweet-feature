@@ -19,11 +19,11 @@ import jwt from 'jsonwebtoken';
 const generateAccessAndRefreshTokens = async (userId) => {
     try {
         const user = await User.findById(userId)
-        
+
         const accessToken = user.generateAccessToken()
 
         const refreshToken = user.generateRefreshToken()
-      
+
         user.refreshToken = refreshToken
 
         await user.save({ validateBeforeSave: false })
@@ -75,7 +75,7 @@ const registerUser = asyncHandler(async (req, res) => {
     // First let us understand about "ApiError".
     // If we look into "ApiError.js" file and we see the constructor then we can observe that except "statusCode" all other fields have same default value. So, "statusCode" is expected from other source. So it becomes very important to pass "statusCode" value as 1st parameter in "ApiError" method wherever we use it. The other thing is rest of fields have default values so it is not neccessary to pass other fields but to make the error more specific we will pass the value for "message" field also as second parameter.
     // So, above "400" is "statusCode" and "Full Name is required." is "message". import { User } from './../models/user.model';
-import { jwt } from 'jsonwebtoken';
+    import { jwt } from 'jsonwebtoken';
 
 
     // Now checking for each field using differnet "if" statement is a lenthy procedure. So we will use another approach.
@@ -273,12 +273,12 @@ const logoutUser = asyncHandler(async (req, res) => {
     }
 
     return res
-    .status(200)
-    .clearCookie("accessToken", options)
-    .clearCookie("refreshToken", options)
-    .json(
-        new ApiResponse(200, {}, "User logged out successfully")
-    )
+        .status(200)
+        .clearCookie("accessToken", options)
+        .clearCookie("refreshToken", options)
+        .json(
+            new ApiResponse(200, {}, "User logged out successfully")
+        )
 
 })
 
@@ -288,52 +288,204 @@ const logoutUser = asyncHandler(async (req, res) => {
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
     // First we need to get the old refresh token which will be inside cookies.
-    const  incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken;
-    if(!incomingRefreshToken) {
+    const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken;
+    if (!incomingRefreshToken) {
         throw new ApiError(401, "Unauthorized request")
     }
 
     try {
         // Now we need to have the decoded information so we will use jwt ".verify()" method.
         const decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET)
-    
+
         // In this decoded token we will have an "_id" of the user. With that "_id" we can find user in database.
         const user = await User.findById(decodedToken?._id).select("-password -refreshToken");
-        if(!user){
-            throw new ApiError(401,"Invalid refresh token")
+        if (!user) {
+            throw new ApiError(401, "Invalid refresh token")
         }
-    
+
         // Now we have two tokens:  1) incomingRefreshToken - which was stored in cookies   2) user.refreshToken - which is stored in database.
         // If both the tokens are same then we can grant premission to update the access token otherwise we will throw an error.
-        if(incomingRefreshToken !== user?.refreshToken){
+        if (incomingRefreshToken !== user?.refreshToken) {
             throw new ApiError(401, "Refresh token is expired or used")
         }
-    
+
         // Since now user is validated so we can generate new "access and refresh tokens"
-        const {accessToken, newRefreshToken} = await generateAccessAndRefreshTokens(user._id);
-    
+        const { accessToken, newRefreshToken } = await generateAccessAndRefreshTokens(user._id);
+
         // Then we can send the newly generated tokens to cookies as a response.
-        const options = { 
+        const options = {
             httpOnly: true,
             secure: true
         }
-    
+
         return res
-        .status(200)
-        .cookie("accessToken", accessToken, options)
-        .cookie("refreshToken", newRefreshToken, options)
-        .json(
-            new ApiResponse(
-                200,
-                {accessToken, refreshToken: newRefreshToken},
-                "Access token refreshed successfully"
+            .status(200)
+            .cookie("accessToken", accessToken, options)
+            .cookie("refreshToken", newRefreshToken, options)
+            .json(
+                new ApiResponse(
+                    200,
+                    { accessToken, refreshToken: newRefreshToken },
+                    "Access token refreshed successfully"
+                )
             )
-        )
     } catch (error) {
         throw new ApiError(401, error?.message || "Invalid refresh token")
     }
 })
 
 
+// Next controller is for "updating password". This controller has logic to update password of logged in user.
+// To update password we need to follow some steps: 
+// 1) For updating password first we need to validate user by making him to enter "old password". /***QUESTION: If user is already logged in then why we need to validate him by making him enter his old password? ***/ 
+/***ANSWER: In real world, it can happen that any other person from our family is using our id, so to confirm that actual user is changing password, we do this check.***/
+// 2) We also need to have "new password". So, we will "req.body" to get new and old passwords.
+// 3) We need to get the "user details" whose password is being modified to validate "old password".
+// 4) Then we need to validate that the old password is correct or not. If not then throw error
+// 5) We can set the "user.password" to "new password".
+// 6) Then "save" the password in database.
 
-export { registerUser, loginUser, logoutUser, refreshAccessToken };
+const changeCurrentPassword = asyncHandler(async (req, res) => {
+    // Step1 and 2)
+    const { oldPassword, newPassword } = req.body;
+
+    // Step3) Again, to get the user details we need to have something like "username or id or email" to find user from database. So, to solve this problem we have made an middleware "auth.middleware.js" which will inject "user" details in "req and res objects". So, we will grab "_id" from there and search for user in database.
+    const user = await User.findById(req.user?._id);
+
+    // Step4) To validate "oldPassword" with the one saved in database we already have a method "isPasswordCorrect()" which will return a boolean value. This method is in "user.model.js" which accepts a "password" as an argument.
+    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+    if (!isPasswordCorrect) {
+        throw new ApiError(400, "Invalid old password");
+    }
+
+    // Step5) 
+    user.password = newPassword;
+    // At this point, the "pre" hook defined in "user.model.js" will work and the new passowrd will be hasheed because we have defined logic for hashing in there.
+
+    // Step6) 
+    await user.save({ validateBeforeSave: false });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, {}, "Password changed successfully"))
+
+})
+
+
+// Next controller is getting current user
+const getCurrentUser = asyncHandler(async (req, res) => {
+    return res
+        .status(200)
+        .json(200, req.user, "current user fetched successfully")
+});
+
+
+// Next controller is for updating accout details of user. These includes text based details not the deatils which uses files like "avatar or coverImage".
+/************GOOD PRACTICE: It is advisable to make seperate controller for updating new text based details and files based details. *************/
+const updateAccountDetails = asyncHandler(async (req, res) => {
+    // Suppose I need to update fullName and email
+    const { fullName, email } = req.body;
+
+    if (!fullName || !email) {
+        throw new ApiError(400, "All fields are required");
+    }
+
+    // To update details we need to get the user and update it.
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        // To update the required details we can use "$set" operator provided by mongoose
+        {
+            $set: {
+                fullName,  // Using shortform here it actually means "fullName: fullName" but we know that in ES6 when "key" and "value" have name then we can write any one of them.
+                email  // "email: email"
+            }
+        },
+        { new: true }
+    ).select("-password");
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                user,
+                "Account details updated successfully"
+            )
+        )
+})
+
+
+// Next controller is for updating files based details.
+
+// First we will update "avatar"
+const updateUserAvatar = asyncHandler(async (req, res) => {
+    // To update an image we need to get the image. We can get the image by using "multer middleware" which has injected "files" properties in "req and res" objects.
+    // "files" is used because earlier we are getting more than one file("avatar", "coverImage"), but this time we are getting only one file which is "avatar" image so we will use "req.file" not "req.files".
+    const avatarLocalPath = req.file?.path;
+    if (!avatarLocalPath) {
+        throw new ApiError(400, "Avatar file is missing")
+    }
+
+    // Now after getting avatar file we have to upload it to "cloudinary". To do so we will use "uploadOnCloudinary()" utility.
+    const avatar = await uploadOnCloudinary(avatarLocalPath);
+    if (!avatar) {
+        throw new ApiError(400, "Error while uploading avatar on cloud")
+    }
+
+    // "uploadOnCloudinary()" will give us a object which is stored in "avatar". So, we need to extract the "url" from "avatar" object and update it in database.
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                avatar: avatar.url
+            }
+        },
+        { new: true }
+    ).select("-password");
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200, user, "Avatar updated successfully"
+        )
+    )
+})
+
+
+// Now we will update "coverImage"
+const updateUserCoverImage = asyncHandler(async (req, res) => {
+    
+    const coverImageLocalPath = req.file?.path;
+    if (!coverImageLocalPath) {
+        throw new ApiError(400, "Cover image file is missing")
+    }
+
+   
+    const coverImage = await uploadOnCloudinary(avatarLocalPath);
+    if (!avatar) {
+        throw new ApiError(400, "Error while uploading Cover image on cloud")
+    }
+
+ 
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                coverImage: coverImage.url
+            }
+        },
+        { new: true }
+    ).select("-password");
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200, user, "Cover image updated successfully"
+        )
+    )
+})
+
+
+export { registerUser, loginUser, logoutUser, refreshAccessToken, changeCurrentPassword, getCurrentUser, updateAccountDetails, updateUserAvatar, updateUserCoverImage };
