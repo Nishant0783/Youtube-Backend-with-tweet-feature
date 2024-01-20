@@ -3,7 +3,8 @@ import { ApiResponse } from '../utils/ApiResponse.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { User } from '../models/user.model.js';
 import { uploadOnCloudinary } from '../utils/cloudinary.js';
-import { isPasswordCorrect, generateAccessToken, generateRefreshToken } from '../models/user.model.js';
+import jwt from 'jsonwebtoken';
+
 
 /***NOTE: Come to this part in while making "loginUser" method ***/
 // This is a utility method we have made to generate access and refresh token. We will use this method in Step4) of login user.
@@ -17,11 +18,14 @@ import { isPasswordCorrect, generateAccessToken, generateRefreshToken } from '..
 // 6) Then at last, we need to send the access and token with the cookies to user so we need to have them. Therefore, we will return them, from this method.
 const generateAccessAndRefreshTokens = async (userId) => {
     try {
-        const user = await User.findById(userId);
-        const accessToken = user.generateAccessToken();
-        const refreshToken = user.generateRefreshToken();
+        const user = await User.findById(userId)
+        
+        const accessToken = user.generateAccessToken()
 
+        const refreshToken = user.generateRefreshToken()
+      
         user.refreshToken = refreshToken
+
         await user.save({ validateBeforeSave: false })
 
         return { accessToken, refreshToken };
@@ -71,6 +75,7 @@ const registerUser = asyncHandler(async (req, res) => {
     // First let us understand about "ApiError".
     // If we look into "ApiError.js" file and we see the constructor then we can observe that except "statusCode" all other fields have same default value. So, "statusCode" is expected from other source. So it becomes very important to pass "statusCode" value as 1st parameter in "ApiError" method wherever we use it. The other thing is rest of fields have default values so it is not neccessary to pass other fields but to make the error more specific we will pass the value for "message" field also as second parameter.
     // So, above "400" is "statusCode" and "Full Name is required." is "message". import { User } from './../models/user.model';
+import { jwt } from 'jsonwebtoken';
 
 
     // Now checking for each field using differnet "if" statement is a lenthy procedure. So we will use another approach.
@@ -180,7 +185,7 @@ const loginUser = asyncHandler(async (req, res) => {
     // Step1) 
     const { username, email, password } = req.body;
     // Here we need to make a check that user should have entered username or email
-    if (!(username || email)) {
+    if (!username && !email) {
         throw new ApiError(400, "Username or Email is required");
     }
 
@@ -204,13 +209,13 @@ const loginUser = asyncHandler(async (req, res) => {
     // Step4) We will use above defined method to generate tokens and save refresh token to database.
     const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id)
 
-    console.log(user);
+    // console.log(user);
 
     // Now, we have a "user"(which we have found on the basis of username or email above in the code) which has all the fields including some unwanted fileds such as "password" and "refreshToken" which we don't want to send to user.
     // To remove these unwanted fields we will make a database call using ".select()" method which allows us to exclude the other non-required fields.
-    const loggedInUser = await User.findById(user._id).select("-password", "-refreshToken");
+    const loggedInUser = await User.findById(user._id).select("-password -refreshToken");
 
-    console.log("logged in user: ", loggedInUser);
+    // console.log("logged in user: ", loggedInUser);
 
     // Step5) To send cookies using "cookie-parser package"  we need to design some options.
     const options = {
@@ -256,7 +261,7 @@ const logoutUser = asyncHandler(async (req, res) => {
             }
         },
         {
-            new: True // Using this so that we get new updated value of user in response object.
+            new: true // Using this so that we get new updated value of user in response object.
         }
     )
 
@@ -278,7 +283,57 @@ const logoutUser = asyncHandler(async (req, res) => {
 })
 
 
+// Now we know that "accessTokens" are short lived and "refreshTokens" are long lived. So, the strategy is to make user hit an endpoint when "accessToken" has expired and then by using that endpoint we can know that user we want to generate new access token for is validated or not because we have user's information in cookies. Once, user is validated then we can generate a new "accessToken" and for more security a new "refreshToken" also.
+// Here we are making a controller which will handle that endpoint. The endpoint is defined in "user.routes.js" file
+
+const refreshAccessToken = asyncHandler(async (req, res) => {
+    // First we need to get the old refresh token which will be inside cookies.
+    const  incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken;
+    if(!incomingRefreshToken) {
+        throw new ApiError(401, "Unauthorized request")
+    }
+
+    try {
+        // Now we need to have the decoded information so we will use jwt ".verify()" method.
+        const decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET)
+    
+        // In this decoded token we will have an "_id" of the user. With that "_id" we can find user in database.
+        const user = await User.findById(decodedToken?._id).select("-password -refreshToken");
+        if(!user){
+            throw new ApiError(401,"Invalid refresh token")
+        }
+    
+        // Now we have two tokens:  1) incomingRefreshToken - which was stored in cookies   2) user.refreshToken - which is stored in database.
+        // If both the tokens are same then we can grant premission to update the access token otherwise we will throw an error.
+        if(incomingRefreshToken !== user?.refreshToken){
+            throw new ApiError(401, "Refresh token is expired or used")
+        }
+    
+        // Since now user is validated so we can generate new "access and refresh tokens"
+        const {accessToken, newRefreshToken} = await generateAccessAndRefreshTokens(user._id);
+    
+        // Then we can send the newly generated tokens to cookies as a response.
+        const options = { 
+            httpOnly: true,
+            secure: true
+        }
+    
+        return res
+        .status(200)
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", newRefreshToken, options)
+        .json(
+            new ApiResponse(
+                200,
+                {accessToken, refreshToken: newRefreshToken},
+                "Access token refreshed successfully"
+            )
+        )
+    } catch (error) {
+        throw new ApiError(401, error?.message || "Invalid refresh token")
+    }
+})
 
 
 
-export { registerUser, loginUser, logoutUser };
+export { registerUser, loginUser, logoutUser, refreshAccessToken };

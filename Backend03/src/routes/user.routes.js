@@ -1,5 +1,5 @@
 import {Router} from 'express';
-import { loginUser, logoutUser, registerUser } from '../controllers/user.controller.js';
+import { loginUser, logoutUser, registerUser, refreshAccessToken } from '../controllers/user.controller.js';
 import { upload } from './../middlewares/multer.middleware.js';
 import { verifyJWT } from '../middlewares/auth.middleware.js';
 
@@ -38,12 +38,16 @@ router.route("/register").post(
 )
 
 // Login route
-router.route("/login".post(loginUser))
+router.route("/login").post(loginUser)
 
 
-// secured routes
+// secured routes start
+
 // Now in this "logout" route we need to execute our middleware "auth.middleware.js" which has a function "verifyJwt". To execute a middleware we just need to write the name of the method of middleware which we want to execute just before we execute main "logoutUser" method.
-router.route("/logout".post(verifyJWT ,logoutUser));
+router.route("/logout").post(verifyJWT ,logoutUser);
 
+// This is actual endpoint where user will hit to get the new access and refresh token.
+router.route("/refresh-token").post(refreshToken);
 
+// secured routes end
 export default router;

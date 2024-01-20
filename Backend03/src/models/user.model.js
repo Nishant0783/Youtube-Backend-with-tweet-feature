@@ -24,7 +24,7 @@ const userSchema = new Schema(
         fullName: {
             type: String,
             required: true,
-            unique: true,
+
             trim: true,
             index: true
         },
@@ -79,7 +79,7 @@ const userSchema = new Schema(
 
 userSchema.pre("save", async function (next) {
     if (!this.isModified("password")) {
-        return next()   
+        return next()
     }
 
     this.password = await bcrypt.hash(this.password, 10);
@@ -109,33 +109,38 @@ userSchema.methods.isPasswordCorrect = async function (password) {
 
 // 1) generateAccessToken: This will be a instance method which is used to create access token. We actually create access tokens by using jwt's ".sign()" method. It takes objects which has payloads(data) which we need to access from database, a access token secret and again an object whic has access token expiry.
 
+
 userSchema.methods.generateAccessToken = function () {
     return jwt.sign(
         {
-            _id: this.id,
+            _id: this._id,
             email: this.email,
             username: this.username,
             fullName: this.fullName
+
             // Value for all the keys will be taken from database that's why we have used this keyword to take reference from database.
         },
         process.env.ACCESS_TOKEN_SECRET,
         {
-            expriresIn: process.env.ACCESS_TOKEN_EXPIRY
-        }
+            expiresIn: process.env.ACCESS_TOKEN_EXPIRY
+        },
+
     )
-};
+}
 
 // 2) generateRefreshToken: This token is also generated in same way.
 
 userSchema.methods.generateRefreshToken = function () {
+    
     return jwt.sign(
         {
             _id: this._id,
         },
         process.env.REFRESH_TOKEN_SECRET,
         {
-            expriresIn: process.env.REFRESH_TOKEN_EXPIRY
-        }
+            expiresIn: process.env.REFRESH_TOKEN_EXPIRY
+        },
+        
     )
 }
 
