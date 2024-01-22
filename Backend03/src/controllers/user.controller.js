@@ -488,4 +488,136 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
 })
 
 
-export { registerUser, loginUser, logoutUser, refreshAccessToken, changeCurrentPassword, getCurrentUser, updateAccountDetails, updateUserAvatar, updateUserCoverImage };
+// Now in this controller we will work with mongoDB aggregation pipeline. This controller is for getting channel profile.
+
+const getChannelProfile = asyncHandler(async(req, res) => {
+    // As we know that in youtube when we go to any channel it's is available on url, so we can get username from url using "req.params".
+    const {username} = req.params;
+    if(!username?.trim()){
+        throw new ApiError(400, "username is missing");
+    }
+
+    // Now we will use aggregation to get the subscriber count and count of channels users has subscribed to.
+    const channel = await User.aggregate([
+        // First pipeline which is to filter the data. So we will use "$match" operator which will -give us all the documents which will have same conditions as mentioned in "$match" operator. Since, at first we need to the document of the user for which we need to calculate subscriber count and count of channel user has subscribed to. We can get that on basis of "username" which we got from url.
+        {
+            $match: {
+                username: username?.toLowerCase()
+            }
+        },
+
+        // In second stage we will tell the database that in which model it should look for the data of the channel's subscribers. To implement this we will use "$lookup" operator.
+        {
+            $lookup: {
+                // 1) from: It is used to tell the mongoDB that from which model we have to look to.
+                from: "subscriptions", // Actually the model name we have given in "subscriptions.model.js" file is "Subscription" but we know that mongo internally converts the name so we are using "subscriptions".
+
+                // 2) localField: It is used to tell the data we are extracting from another model, by what name it should be visible in our current model. For eg: Currently we are in "User" model and we are extracting data from "Subscription" model. So, in local field we will give that name by which the extracted data is visible in "User" model.
+                localField: "_id",
+
+                // 3) foreignField: It is used to tell the data we are extracting by name it is in the model from where data is being extracted. For eg: Currently we are in "User" model and getting data from "Subscription" model, so by what name the required data is in "Subscription" model.
+                foreignField: "channel",
+
+                // 4) as: We know that each operator in each stage returns an array. So here we give then name of array by which it should be showed in our document.
+                as: "sunscribers"
+            }
+            // Summary is: The database will look in "subscriptions" model and will create a field "_id" or modify it if already exist in "User" model and assign it the value which will be inside "channel" field in "subscriptions" model, and we know that an array will bew returned so the name of the array returned will be "subscribers" in which each element will behave as set of objects of the data being extracted.
+        },
+
+        // In third stage we will tell the database in which model it should look for the data of the channels user have subscribed to. To implement this we will use "$lookup" operator.
+        {
+            $lookup: {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "subscriber",
+                as: "subscribedTo"
+            }
+        },
+
+        // Till now, we have only collected the data from differnet models, but now we have to add the data to our current model("User") so will use "$addFields" operator to add.
+        // What data we need to add to the user model? We need to add the actual number of subscribers taht user has and number of channels users has subscribed to.
+        // How to get the actual numbers? Since we know that the above each stage will return an array. We have two arrays:-    1) "subscribers": which has the documents of all the subscribers of that user.   2) "sunscriberTo": which has the documents of the channels that users have subscribed to. 
+        // Now to get the count we can simply get the size of both the arrays.
+        /***REMEMBER: "subscribers array and subscribedTo array" are now new fields in so we will treat them like a field in next stage. Treating them like a field means we will use "$" sign before accessing them. */
+        {
+            $addFields: {
+                // "subscriberCount" is the name of the field which will tell us the count of subscribers
+                subscriberCount: {
+                    // "$size" is the operator used to calculate the size of the array
+                    $size: "$subscribers"  // "subscribers" is the array whose size needs to be calculated and since it's a field so we are using "$" as a prefix.
+                },
+                // "channelsSubscribedTo" is the name of the field which will tell us the count of channels user has subscribed to.
+                channelsSubscribedTo: {
+                    $size: "$subscribedTo"
+                },
+                // Now the another thing which we commonly see in youtube is when a user is subscribed to a channel then the "subscribe button becomes greyish and the text says 'subscribed'" and when user is not subscribed to channel then "subscribe button becomes red and the text says 'subscribe'". So, the high level thing is that we need to have a field which accepts a boolean value for whether that is subscribed or not by the user.
+                /****REMEMBER: A channel is also a user which can get subscribed and can sunscribe to another chanel(user).****/
+                // Let's say the field is "isSubscribed" and the field will be in "User" model.
+                // Since we are in "$addField" stage so we can create a new field here and it will get added to our model.
+                isSubscribed: {
+                    // To decide it's boolean value we need to have a condition. The condition in mongoDb is defined by "$cond" operator.
+                    $cond: {
+                        // What conditon we need to have? If we talk about a user which is a "channel", the data of it's all subscribers will be in "subscribers" array which is also a field in "User" model and each element in that array will be the data of each subscriber. Now if we talk about a user which is a normal user if he is subscribed to a channel then the, "subscribers" array for that channel should have his data. So we can make a check that "if the subscribers array has the data for that particular user then 'isSubscribed' will be true otherwise it will be false". 
+                        // Now to make a check we need to understand more about "subscribers" array. As we know that each element in "subscribers" array is the data of each "subscriber" which refers to "subscriber" model defined in "subscriber.model.js" file. So we can conclude that we can access the "subscriber" model by using "subscribers.subscriber".
+
+                        // In mongoDB to define a condition we use "if-then-else" statement where "if contains the condition to check on", "then contains the operation to be performed when condition is true", and "else contains the operation to be performed when condition is false".
+
+                        // Inside "if" we need to check that normal user or just user is there in subscribers array or not. So to check something in an array or object we use "$in" operator.
+                        if: {$in: [req.user?._id, "$subscribers.subscriber"]},
+                        // In this condition we are getting the "_id" of the normal user or just user and checking that the "_id" is there in "subscriber model which is inside subscribers array".
+                        // If _id is there,
+                        then: true, // isSubscribed => true
+                        // If _id is not there,
+                        else: false, // isSubscribed => false
+                    } 
+                }
+
+               
+            }
+        },
+
+         // Now in the fifth stage we have to do is that we have send the selected data means I don't have to send all data inside "User" model but some selected fields. To do this we use "$project" operator and we will write the names of all the fields which we want to send and mark them 1.
+         {
+            $project: {
+                fullName: 1,
+                username: 1,
+                subscriberCount: 1,
+                channelsSubscribedTo: 1,
+                isSubscribed: 1,
+                avatar: 1,
+                coverImage: 1,
+                email: 1
+            } 
+         }
+
+
+    ]);
+
+    // If channel is not there then we have throw an error. We can check the length because "aggregate" returns us an array and so is channel.
+    if(!channel?.length){
+        throw new ApiError(404, "Channel does not exists");
+    };
+    // console.log(channel);
+
+ 
+    // After printing the "channel" array we will find out that only first element is usefull for us so we can send that as a response.
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, channel[0], "User channel fetched successfully")
+    );
+})
+
+
+export { 
+    registerUser, 
+    loginUser, 
+    logoutUser, 
+    refreshAccessToken, 
+    changeCurrentPassword, 
+    getCurrentUser, 
+    updateAccountDetails, 
+    updateUserAvatar, 
+    updateUserCoverImage,
+    getChannelProfile
+};
