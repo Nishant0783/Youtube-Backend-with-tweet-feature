@@ -1,5 +1,5 @@
 import {Router} from 'express';
-import { loginUser, logoutUser, registerUser, refreshAccessToken } from '../controllers/user.controller.js';
+import { loginUser, logoutUser, registerUser, refreshAccessToken, changeCurrentPassword, getCurrentUser, updateAccountDetails, updateUserAvatar, updateUserCoverImage, getUserChannelProfile, getWatchHistory } from '../controllers/user.controller.js';
 import { upload } from './../middlewares/multer.middleware.js';
 import { verifyJWT } from '../middlewares/auth.middleware.js';
 
@@ -47,7 +47,33 @@ router.route("/login").post(loginUser)
 router.route("/logout").post(verifyJWT ,logoutUser);
 
 // This is actual endpoint where user will hit to get the new access and refresh token.
-router.route("/refresh-token").post(refreshToken);
+router.route("/refresh-token").post(refreshAccessToken);
+
+// This route is responsible for changing password. To change password it is neccessary that user should be logged in so we will use "verifyJWT" middleware.
+router.route("/change-password").post(verifyJWT, changeCurrentPassword);
+
+// This route is responsible for getting current user. To get current user it is neccessary that user should be logged in so we will use "verifyJWT" middleware.
+router.route("/current-user").get(verifyJWT, getCurrentUser);
+
+// This route is responsible for updating account details. To update current user details it is neccessary that user should be logged in so we will use "verifyJWT" middleware.
+// Since, we are updating a field so we will use "patch" method so that we can update the required part only not whole document.
+router.route("/update-account").patch(verifyJWT, updateAccountDetails);
+
+// This route is responsible for updating avatar. To update avatar it is neccessary that user should be logged in so we will use "verifyJWT" middleware and since to update avatar we need a file so we will also use multer middleware. The sequence of middlewares is important because we to update avatar first we need to check that user is logged in or not so the first middleware will be verifyJWT.
+// Since we are expecting only one file which is avatar image so we will use "single" with "upload".
+router.route("/avatar").patch(verifyJWT, upload.single("avatar"), updateUserAvatar);
+
+// This route is responsible for updating cover image. To update cover image it is neccessary that user should be logged in so we will use "verifyJWT" middleware and also we will use multer middleware.
+router.route("/cover-image").patch(verifyJWT, upload.single("coverImage"), updateUserCoverImage);
+
+
+// This route is responsible for getting channel profile. To get channel profile it is neccessary that user should be logged in so we will use "verifyJWT" middleware. Also for channel "username"  is required and we are taking "username" from "url" so it is neccessary to make "url" such that it can handle the "parameters".
+// "/c" means "channels" just using shortform here. URL will also have "/c".
+router.route("/c/:username").get(verifyJWT, getUserChannelProfile);
+
+// This route is responsible for getting watch history. To get watch history it is neccessary that user should be logged in so we will use "verifyJWT" middleware.
+router.route("/history").get(verifyJWT, getWatchHistory);
+
 
 // secured routes end
 export default router;
