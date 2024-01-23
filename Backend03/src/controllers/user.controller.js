@@ -4,6 +4,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { User } from '../models/user.model.js';
 import { uploadOnCloudinary } from '../utils/cloudinary.js';
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 
 
 /***NOTE: Come to this part in while making "loginUser" method ***/
@@ -75,7 +76,7 @@ const registerUser = asyncHandler(async (req, res) => {
     // First let us understand about "ApiError".
     // If we look into "ApiError.js" file and we see the constructor then we can observe that except "statusCode" all other fields have same default value. So, "statusCode" is expected from other source. So it becomes very important to pass "statusCode" value as 1st parameter in "ApiError" method wherever we use it. The other thing is rest of fields have default values so it is not neccessary to pass other fields but to make the error more specific we will pass the value for "message" field also as second parameter.
     // So, above "400" is "statusCode" and "Full Name is required." is "message". import { User } from './../models/user.model';
-    import { jwt } from 'jsonwebtoken';
+  
 
 
     // Now checking for each field using differnet "if" statement is a lenthy procedure. So we will use another approach.
@@ -256,8 +257,13 @@ const logoutUser = asyncHandler(async (req, res) => {
     await User.findByIdAndUpdate(
         req.user._id,
         {
-            $set: {
-                refreshToken: undefined
+            // Here we are clearing the value of "refreshToken" by using "$set" operator by setting the value of that field to undefind. This is not a good approach to follow thatswhy we are using "$unset" operator to unset some fileds value.
+            // $set: {
+            //     refreshToken: undefined
+            // },
+            // In mongoose we have an operator "$unset" which is used to clear the value inside the given field. We need to set the value of that field to 1.
+            $unset: {
+                refreshToken: 1
             }
         },
         {
@@ -376,7 +382,9 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 const getCurrentUser = asyncHandler(async (req, res) => {
     return res
         .status(200)
-        .json(200, req.user, "current user fetched successfully")
+        .json(
+            new ApiResponse(200, req.user, "current user fetched successfully")
+        )
 });
 
 
@@ -462,8 +470,8 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     }
 
    
-    const coverImage = await uploadOnCloudinary(avatarLocalPath);
-    if (!avatar) {
+    const coverImage = await uploadOnCloudinary(coverImageLocalPath);
+    if (!coverImage) {
         throw new ApiError(400, "Error while uploading Cover image on cloud")
     }
 
@@ -490,7 +498,7 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
 
 // Now in this controller we will work with mongoDB aggregation pipeline. This controller is for getting channel profile.
 
-const getChannelProfile = asyncHandler(async(req, res) => {
+const getUserChannelProfile = asyncHandler(async(req, res) => {
     // As we know that in youtube when we go to any channel it's is available on url, so we can get username from url using "req.params".
     const {username} = req.params;
     if(!username?.trim()){
@@ -519,7 +527,7 @@ const getChannelProfile = asyncHandler(async(req, res) => {
                 foreignField: "channel",
 
                 // 4) as: We know that each operator in each stage returns an array. So here we give then name of array by which it should be showed in our document.
-                as: "sunscribers"
+                as: "subscribers"
             }
             // Summary is: The database will look in "subscriptions" model and will create a field "_id" or modify it if already exist in "User" model and assign it the value which will be inside "channel" field in "subscriptions" model, and we know that an array will bew returned so the name of the array returned will be "subscribers" in which each element will behave as set of objects of the data being extracted.
         },
@@ -542,12 +550,12 @@ const getChannelProfile = asyncHandler(async(req, res) => {
         {
             $addFields: {
                 // "subscriberCount" is the name of the field which will tell us the count of subscribers
-                subscriberCount: {
+                subscribersCount: {
                     // "$size" is the operator used to calculate the size of the array
                     $size: "$subscribers"  // "subscribers" is the array whose size needs to be calculated and since it's a field so we are using "$" as a prefix.
                 },
                 // "channelsSubscribedTo" is the name of the field which will tell us the count of channels user has subscribed to.
-                channelsSubscribedTo: {
+                channelsSubscribedToCount: {
                     $size: "$subscribedTo"
                 },
                 // Now the another thing which we commonly see in youtube is when a user is subscribed to a channel then the "subscribe button becomes greyish and the text says 'subscribed'" and when user is not subscribed to channel then "subscribe button becomes red and the text says 'subscribe'". So, the high level thing is that we need to have a field which accepts a boolean value for whether that is subscribed or not by the user.
@@ -581,8 +589,8 @@ const getChannelProfile = asyncHandler(async(req, res) => {
             $project: {
                 fullName: 1,
                 username: 1,
-                subscriberCount: 1,
-                channelsSubscribedTo: 1,
+                subscribersCount: 1,
+                channelsSubscribedToCount: 1,
                 isSubscribed: 1,
                 avatar: 1,
                 coverImage: 1,
@@ -592,20 +600,99 @@ const getChannelProfile = asyncHandler(async(req, res) => {
 
 
     ]);
+    console.log("channel is:     ", channel);
 
     // If channel is not there then we have throw an error. We can check the length because "aggregate" returns us an array and so is channel.
     if(!channel?.length){
         throw new ApiError(404, "Channel does not exists");
     };
-    // console.log(channel);
 
  
-    // After printing the "channel" array we will find out that only first element is usefull for us so we can send that as a response.
+    // After printing the "channel" array we will find out that only first element is usefull which is an object for us so we can send that as a response.
+    
     return res
     .status(200)
     .json(
         new ApiResponse(200, channel[0], "User channel fetched successfully")
     );
+})
+
+
+// Next route is for getting watch history of user. This is a complex one where we will use nested pipelines.
+// To get watch history we need to understand our two schemas 1) "user" schema     2) "video" schema
+// 1) user schema:- In user schema we have a field "watchHistory" which is an array for storing all the videos which has been watched by that user. So, to store videos we will store "id" of each video through which we can refer to it's video model.
+// 2) video schema:- In video schema we have a field "owner" which tells which the creator of that video which is also a user.
+// So, the thing here is, both the schemas are cross connecting means "user" schema needs "video" schema and each video in "video" schema needs "user" data.
+// So how will we proceed to implement this? 
+// ANSWER: 1) first we will get the "id" of the user whose watch history we need to get. Using "id".
+// 2) Using "id" we will look up for the videos in "videos" model.
+// 3) Using nested pipeline we will look up for "owner" in "user" model.
+
+const getWatchHistory = asyncHandler(async(req, res)=> {
+    /****NOTE: When we write "req.user._id" what do we get? The answer to this what most people give is we get "mongoDB id" but actually the mongoDB id is in form "ObjectID('824852632$dfiyw2121451')" and by using "req.user._id" we only get ('824852632$dfiyw2121451') which is a string. So when we write "req.user._id" we get a "string" not a mongoDB id. MongoDB id is whole "ObjectID('824852632$dfiyw2121451')".While using mongoose, it behind the scenes convert it to mongoDB id automatically.****/
+    // While using mongoDB aggregation pipeline which is a core concept of mongoDB, mongoose has no role so we need to convert the string which we get from "req.user._id" to mongoDB id manually by using a method which is provided by mongoose. 
+    /**REMEMBER: Mongoose has no role in aggregation pipeline means no behind the scenes working of mongoose works here. We have to define everything. Thatswhy for conerting "string" to "mongoDB id" we are using mongoose method.****/
+    const user = await User.aggregate([
+        {
+            // Using "$match" operator to filter the "User" model based on "id" that is currently logged in.
+            $match: {
+                _id: new mongoose.Types.ObjectId(req.user._id) // This is how we can generate "mongoDB id" from the "string".
+            }
+        },
+        {
+            // After getting filtered data we need to look for videos in "videos" model so we will use "$lookup" at stage 2.
+            $lookup: {
+                from: "videos",
+                localField: "watchHistory",
+                foreignField: "_id",
+                as: "watchHistory",
+                // Now the database is desingned in such a form that each user has a watch history and each video in watch history will have a onwer(user).
+                // So, till now we have got the all videos watched by user but each video's "owner" field is empty. To get the "owner" field we need to integrate another pipeline inside this pipeline only. We are using nested pipeline because "owner" is inside "videos" model.
+                // To implement nested pipeline we use "pipeline" as a key and pass array of other pipelines.
+                pipeline: [
+                    {
+                        // Now to get "owner" we are looking for "users" model, but actually we are in "videos" model, in videos model "localField" will be "owner" and "foreignField" will be "_id" because we only need the id of that user and we will display the owner data under "owner" field only. We can make a new field and display there, modifying "owner" field is good approach.
+                        $lookup: {
+                            from: "users",
+                            localField: "owner",
+                            foreignField: "_id",
+                            as: "owner", 
+                            // Now when we are getting "owner" which is a "user" we will get all the data of the "owner" but we need only 2-3 things so we will use "$project" operator inside another nested pipeline to get neccessary data only.
+                            pipeline: [
+                                {
+                                    $project: {
+                                        fullName: 1,
+                                        username: 1,
+                                        avatar: 1
+                                    }
+                                }
+                            ]
+                        }
+                    }, 
+
+                    // Till now code is enough. But for frontend developer it will be difficult to get the data because we know tat aggregate returns an array and only the first value is useful in that array. So frontend developer has to use loops to get thet data.
+                    // To make good response what we can do is we can add a field "owner" or modify it if it already exists. That "owner" field will contain the data from the first element of returned array.
+                    {
+                        $addFields: {
+                            // Since, we need to get the first value so we can directly use "$first" operator. We will apply it to "owner" field which is an array.
+                            owner: {
+                                $first: "$owner"
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    ]);
+
+    console.log(user);
+
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, user[0].watchHistory, "Watch history fetched successfully")
+    )
 })
 
 
@@ -619,5 +706,6 @@ export {
     updateAccountDetails, 
     updateUserAvatar, 
     updateUserCoverImage,
-    getChannelProfile
+    getUserChannelProfile,
+    getWatchHistory
 };
