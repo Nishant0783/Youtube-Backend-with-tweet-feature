@@ -7,6 +7,7 @@ import {v2 as cloudinary} from 'cloudinary';
 // fs: fs is fileSystem anda we are using it to remove file from local storage.
 // It is provided by nodejs.
 import fs from 'fs';
+
 // We will use "unlinkSync()" method to remove file.
 // Go tho notes.txt to read more about it.
 
@@ -45,6 +46,15 @@ const uploadOnCloudinary = async (localFilePath) => {
     }
 }
 
-export {uploadOnCloudinary};
+// This is utility for deleting a file from cloudinary.
+const deleteFromCloudinary = async (public_id, resourceType) => {
+    const response = await cloudinary.uploader.destroy(public_id, {
+        resource_type: resourceType
+    })
+
+    return response; 
+}
+
+export { uploadOnCloudinary, deleteFromCloudinary };
 
           

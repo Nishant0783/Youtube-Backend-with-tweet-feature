@@ -104,8 +104,8 @@ const registerUser = asyncHandler(async (req, res) => {
     }
 
     // Step4) To check image is uploaded and get it's path we have multer.
-    // To get the access of data we use "req.body" similarly to get access of files we have "req.files". "files" is not provided by express it is added on "request(req)" by middleware(multer).
-    // ".files" will respond us many options but we need one option which has name same as our file name(here image name). Since, we want "avatar" image so it will have an option with name "avatar". By the way this is the same name which we have given in "user.routes.js" while configuring multer by name "upload".
+    // To get the access of data we use "req.body" similarly to get access of files we have "req.files". "files" is not provided by express it is added on "request(req)" object by middleware(multer).
+    // ".files" will respond us with many options but we need one option which has name same as our file name(here image name). Since, we want "avatar" image so it will have an option with name "avatar". By the way this is the same name which we have given in "user.routes.js" while configuring multer by name "upload".
     // This "avatar" has many arrays inside it. We need first one so we will use "avatar[0]" and we need "path" property from it. We will use "avatar[0].path".
 
     // const avatarLocalPath = req.files.avatar[0].path;
@@ -113,7 +113,7 @@ const registerUser = asyncHandler(async (req, res) => {
     // This is good, but one corner case is missing which is suppose if we don't have ".avatar" option, it can happen because ".avatar" is the name which we have configured in other file which is in routes file and here we can have a typo in writing name, or suppose if we don't have ".path" property on our ".avatar".
     // So, to handle this corner case we will use "conditional chaining(?.)" means before chaining we will check if that property exists or not.
     const avatarLocalPath = req.files?.avatar[0]?.path;
-    // const coverImageLocalPath = req.files?.coverImage[0]?.path; // Here is a little bug, let's understand this: First we are checking do we have "req.files" then we are checking do we have "coverImage" array or not then we are checking for "path". And, later on in code where we are creating entry of data in database checking that if we have "coverImage.url" then save it or if we don't have url then leave it empty. But the point to think here is that: SINCE COVERIMAGE IS NOT AN MANDATORY FIELD, SO WE CAN LEAVE IT EMPTY AND EMPTY MEANS "UNDEFINED" AND THE DATABASE WILL THROW AN ERROR "Cannot read properties of undefined" because in we are checking for "coverImage.url" and the vlaue of "coverImage" is "undefined" so database will go for checking the "url" value for an undefined which will make database to throw error. To solve this error we can use classical "if" statement  or there is an addvanced JS solution using "conditional chaining".
+    // const coverImageLocalPath = req.files?.coverImage[0]?.path; // Here is a little bug, let's understand this: First we are checking do we have "req.files" then we are checking do we have "coverImage" array or not then we are checking for "path". And, later on in code where we are creating entry of data in database checking that, if we have "coverImage.url" then save it, or if we don't have url then leave it empty. But the point to think here is that: SINCE COVERIMAGE IS NOT AN MANDATORY FIELD, SO WE CAN LEAVE IT EMPTY AND EMPTY MEANS "UNDEFINED" AND THE DATABASE WILL THROW AN ERROR "Cannot read properties of undefined" because in database we are checking for "coverImage.url" and the value of "coverImage" is "undefined" so database will go for checking the "url" value for an undefined which will make database to throw error. To solve this error we can use classical "if" statement or there is an addvanced JS solution using "conditional chaining".
     // In "if" statement we will check for each condition. 1) check for do we have "req.files"  2) check for "coverImage" is an array by using "isArray() method which accepts name of array return boolean value. True if passed argument is array and flase if not".  3) check for length of "coverImage" array because it can happen that we might not have any element inside array.
     let coverImageLocalPath;
     if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
@@ -404,7 +404,7 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
         // To update the required details we can use "$set" operator provided by mongoose
         {
             $set: {
-                fullName,  // Using shortform here it actually means "fullName: fullName" but we know that in ES6 when "key" and "value" have name then we can write any one of them.
+                fullName,  // Using shortform here, it actually means "fullName: fullName" but we know that in ES6 when "key" and "value" have name then we can write any one of them.
                 email  // "email: email"
             }
         },
@@ -583,7 +583,7 @@ const getUserChannelProfile = asyncHandler(async(req, res) => {
                
             }
         },
-
+        
          // Now in the fifth stage we have to do is that we have send the selected data means I don't have to send all data inside "User" model but some selected fields. To do this we use "$project" operator and we will write the names of all the fields which we want to send and mark them 1.
          {
             $project: {
@@ -600,7 +600,7 @@ const getUserChannelProfile = asyncHandler(async(req, res) => {
 
 
     ]);
-    console.log("channel is:     ", channel);
+
 
     // If channel is not there then we have throw an error. We can check the length because "aggregate" returns us an array and so is channel.
     if(!channel?.length){
