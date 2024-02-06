@@ -159,7 +159,7 @@ const publishAVideo = asyncHandler(async (req, res) => {
     // Step 2)
     const videoCloudinaryPath = await uploadOnCloudinary(videoFileLocalPath);
     const thumbnailCloudinaryPath = await uploadOnCloudinary(thumbnaiLocalPath);
-    console.log("cloudinary data: ",thumbnailCloudinaryPath)
+    console.log("cloudinary data: ",videoCloudinaryPath)
     const videoPublicId = videoCloudinaryPath.public_id
     const thumbnailPublicId = thumbnailCloudinaryPath.public_id
 
