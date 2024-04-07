@@ -53,7 +53,7 @@ const deleteFromCloudinary = async (public_id, resourceType) => {
     })
 
     return response; 
-}
+}   
 
 export { uploadOnCloudinary, deleteFromCloudinary };
 

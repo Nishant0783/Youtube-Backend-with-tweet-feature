@@ -16,7 +16,7 @@ const router = Router();
 // For eg: In app.js we have "/users" and here we have another route which is "/login". The url will be: "http://localhost3000/users/login".
 
 // Since we updated "/user" route so final url will be: 
-// "http://localhost3000/ap/v1/users/register" or "http://localhost3000/ap/v1/users/login"
+// "http://localhost3000/api/v1/users/register" or "http://localhost3000/api/v1/users/login"
 
 
 // Code to apply multer so that "registerUser" can work with files.

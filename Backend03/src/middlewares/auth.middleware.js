@@ -1,5 +1,5 @@
 // The strategy we will follow is we will verify the "accessToken" user has is same as stored in database, then we will add a "user" object in "req and res" and then we can use it anywhere.
-// Now, how can we get "accessToken". If you remember we has "cookies" and in "cookies" we have sent "accessToken" as a response so we can use that.
+// Now, how can we get "accessToken". If you remember we had "cookies" and in "cookies" we have sent "accessToken" as a response so we can use that.
 import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -22,7 +22,7 @@ export const verifyJWT = asyncHandler(async (req, res, next) => {
     
         const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
         // This decoded token will have all the information which we have sent through it while generating it.
-        // We can all the fields which we have sent through token in "user.model.js" file under "generateAccessToken()".
+        // We can see all the fields which we have sent through token in "user.model.js" file under "generateAccessToken()".
         // console.log("decoded token: ", decodedToken);
         
 

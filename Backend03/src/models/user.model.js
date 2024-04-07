@@ -24,7 +24,6 @@ const userSchema = new Schema(
         fullName: {
             type: String,
             required: true,
-
             trim: true,
             index: true
         },
@@ -54,7 +53,7 @@ const userSchema = new Schema(
 );
 
 // To encrypt passwords we need a middleware providede by mongoose which is "pre".
-// This middleware is used to perform some function just before perfoming some functionalti (like saving, updating, etc) related to database.
+// This middleware is used to perform some function just before perfoming some functionality (like saving, updating, etc) related to database.
 // We use "pre" middleware as a plugin.
 
 // In "pre" middleware the first argument it accepts is the operation name before which we have to perform something.
@@ -100,10 +99,11 @@ userSchema.pre("save", async function (next) {
 // "isPasswordCorrect" is a method which is used to check whether password entered by user matches with password saved in database.
 // To do this first we pass user entered password (password) to the isPasswordCorrect() method as an argument and second we use bcrypt compare method which takes two arguments 1) user entered password(password)  2) password saved in database(this.password).
 // This .compare() returns boolean value which we will return from the method.
+
 userSchema.methods.isPasswordCorrect = async function (password) {
     return await bcrypt.compare(password, this.password)
 }
-
+    
 
 // Now we will write instance methods to genreate access tokens and refresh tokens for JWT.
 
@@ -131,7 +131,7 @@ userSchema.methods.generateAccessToken = function () {
 // 2) generateRefreshToken: This token is also generated in same way.
 
 userSchema.methods.generateRefreshToken = function () {
-    
+
     return jwt.sign(
         {
             _id: this._id,
@@ -140,7 +140,7 @@ userSchema.methods.generateRefreshToken = function () {
         {
             expiresIn: process.env.REFRESH_TOKEN_EXPIRY
         },
-        
+
     )
 }
 

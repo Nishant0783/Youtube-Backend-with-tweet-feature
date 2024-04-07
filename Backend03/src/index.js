@@ -36,7 +36,7 @@ dotenv.config();
 
 // METHOD 2 : In this we have created mongoDb connection logic in one separate file and then imported that method here and executed it.
 
-    import dotenv from 'dotenv';
+import dotenv from 'dotenv';
 import connectDB from './db/index.js';
 import { app } from '../src/app.js';
 dotenv.config();

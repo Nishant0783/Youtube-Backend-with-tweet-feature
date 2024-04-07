@@ -38,7 +38,7 @@ We know first three (err, req, res). Let's see about (next).
 /*****UTILS FOLDER*****/
 1) What is utility? Utility is something which is required again and again. 
 2) In Utils we store all the files or methods which are required again and again in different files.
-For eg: We have differnet models and each model need to talk to database and while talking to database we have to follow two things: 1st) Use promises or try-catch to handle errors.  2nd) Use async-await because databases take some time get the responses. So, we can see here we have to do same task for every model to make it talk to database just database name and other minor things are changing. So we can create a file in utiltiy folder that can be used anywhere.
+For eg: We have differnet models and each model need to talk to database and while talking to database we have to follow two things: 1st) Use promises or try-catch to handle errors.  2nd) Use async-await because databases take some time get the responses. So, we can see here we have to do same task for every model to make it talk to database, just database name and other minor things are changing. So we can create a file in utiltiy folder that can be used anywhere.
 
 
 /*******HIGHER ORDER FUNCTIONS*******/
@@ -82,12 +82,12 @@ Here, inside "if" we are iterating on each element of the given array and checki
 
 
 /*** ACCESS TOKENS ***/
-1) An accesss token is a credential used by an applicationto access a protected resource on behalf of user.
+1) An accesss token is a credential used by an application to access a protected resource on behalf of user.
 2) It represents the authorization granted to the application and specifies the premissions and scope of access.
-3) Access tokens are short-lived and typically hae an expiration time to enhance security.
-4) They are used to make API requests to access user data or preform actions on behalf of the user.
+3) Access tokens are short-lived and typically have an expiration time to enhance security.
+4) They are used to make API requests to access user data or perform actions on behalf of the user.
 
 /*** REFRESH TOKENS ***/
 1) A refresh token is credential used to obtain a new access token when the current one expires.
-2) Unlike access token, refresh tokens have a lobger lifespan and are used to obtain a new acces token without requiring the user to re-authenticate.
-3) It adds an additional layer of security since the user 's credentials are not invloved in every access token request.
+2) Unlike access token, refresh tokens have a longer lifespan and are used to obtain a new access token without requiring the user to re-authenticate.
+3) It adds an additional layer of security since the user's credentials are not invloved in every access token request.

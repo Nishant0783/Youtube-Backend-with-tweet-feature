@@ -14,9 +14,9 @@ import mongoose from 'mongoose';
 // ---> The answer is since this method is used in Step4) and in earlier steps we have validated that we will have a user, thats why we are using userId.
 // 2) First we have to find the user based on "id".
 // 3) Then we will generate an access token and refresh token by using methods that we created in user.model.js file.
-// 4) We know that once refresh token is generared  we need to save it in database. So first we create a field in database in user model using "user.refreshToken" and assign "refreshToken" to it.
+// 4) We know that once refresh token is generared we need to save it in database. So first we create a field in database in user model using "user.refreshToken" and assign "refreshToken" to it.
 // 5) To save we will use ".save()" method of mongoose and since it can be time consuming process so using "await". Now, what is "{ validateBeforeSave: false }"? Since , the ".save()" method re-validate the whole model before saving it to database. Re-validation means it will check all the required fields are given or not, but here we are only adding a new field which is "refreshToken" so saving will give error. Hence { validateBeforeSave: false } is used to save without any revalidation.
-// 6) Then at last, we need to send the access and token with the cookies to user so we need to have them. Therefore, we will return them, from this method.
+// 6) Then at last, we need to send the access token and refresh token with the cookies to user so we need to have them. Therefore, we will return them, from this method.
 const generateAccessAndRefreshTokens = async (userId) => {
     try {
         const user = await User.findById(userId)
@@ -59,7 +59,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
     // Step1) All the details we get from req.body
     const { fullName, email, username, password } = req.body;
-    console.log(res.body);
+    console.log(req.body);
 
     // Now here, we are expecting some images but we have not configured anything to accept files except a "multer middleware" which is only neccessary. Till now we are only dealing with data.
     // Since, multer is configured as middleware and middleware works just after the routes and before final functionality. So, we can't use apply multer here because this is just a method.
@@ -236,7 +236,7 @@ const loginUser = asyncHandler(async (req, res) => {
                 200, // statusCode
                 // Below given whole object is "data". We can check the structure of "ApiResponse.js" file in utility folder to understand it.
                 {
-                    // The data we need to send is given by name "user" and the fields we need to send are "loggedInUser", "accessToke", "refreshToken".
+                    // The data we need to send is given by name "user" and the fields we need to send are "loggedInUser", "accessToken", "refreshToken".
 
                     user: loggedInUser, accessToken, refreshToken
                 },
@@ -251,13 +251,13 @@ const loginUser = asyncHandler(async (req, res) => {
 // 2) Clear refreshToken for it. Because when user will again login next time new tokens will be generated.
 
 // BIG PROBLEM: We know the strategy how to make a user logout. But to make a logout we need to have it's email or username or _id so we can query database and clear all the above mentioned things. But here, in "logoutUser()" method we don't have access to any of these. Earlier in above method we had a form where user submits details and on the basis of that detail we can find the user. But here we don't have the leverage. The problem is "HOW WE CAN GET THE ID OF USER TO BE LOGGED OUT?"
-// ANSWER: If we have something in "request" through which we can the currently logged in user details then we can do. Now by default express does not provide any thing to do this. We know that if express does not provide required things in "request or response object" then we can use a middleware to do so. Like we did earlier when we don't have access to "files" we used to "multer" which added a files field in "req and res", similarly for cookies we used "cokie-parser". So, inject something in "req and res object" we have to use a middleware. But there areno predefined middleware, So, we will design our own middleware by name "auth.middleware.js" in "middlewares" folder.
+// ANSWER: If we have something in "request" through which we can access the currently logged in user details then we can do. Now by default express does not provide any thing to do this. We know that if express does not provide required things in "request or response object" then we can use a middleware to do so. Like we did earlier when we don't have access to "files" we used to "multer" which added a files field in "req and res", similarly for cookies we used "cokie-parser". So, inject something in "req and res object" we have to use a middleware. But there are no predefined middleware, So, we will design our own middleware by name "auth.middleware.js" in "middlewares" folder.
 const logoutUser = asyncHandler(async (req, res) => {
     // Now we can make a database call to clear the refreshToken by using "_id" getting from "req.user".
     await User.findByIdAndUpdate(
         req.user._id,
         {
-            // Here we are clearing the value of "refreshToken" by using "$set" operator by setting the value of that field to undefind. This is not a good approach to follow thatswhy we are using "$unset" operator to unset some fileds value.
+            // Here we are clearing the value of "refreshToken" by using "$set" operator by setting the value of that field to undefind. This is not a good approach to follow thatswhy we are using "$unset" operator to unset some fileds value.  
             // $set: {
             //     refreshToken: undefined
             // },
